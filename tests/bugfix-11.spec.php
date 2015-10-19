@@ -10,28 +10,24 @@ Protobuf::autoload();
 
 include_once __DIR__ . '/protos/addressbook.php';
 
-describe "Bugfix #11"
+class Issue11BugfixTest extends \PHPUnit_Framework_TestCase {
+  public function setUp() {
+    $codec = new Protobuf\Codec\Binary();
+    Protobuf::setDefaultCodec($codec);
+  }
+  public function testBugfixIssue11() {
+    // should serialize nested message
+    $p = new tests\Person();
 
-    before
-        $codec = new Protobuf\Codec\Binary();
-        Protobuf::setDefaultCodec($codec);
-    end
+    $p->setName('Foo');
+    $p->setId(2048);
+    $p->setEmail('foo@bar.com');
 
-    it "should serialize nested message"
+    $phoneNumber = new tests\Person\PhoneNumber;
+    $phoneNumber->setNumber('+8888888888');
+    $p->setPhone($phoneNumber);
 
-        $p = new tests\Person();
-
-        $p->setName('Foo');
-        $p->setId(2048);
-        $p->setEmail('foo@bar.com');
-
-        $phoneNumber = new tests\Person\PhoneNumber;
-        $phoneNumber->setNumber('+8888888888');
-        $p->setPhone($phoneNumber);
-
-        $data = $p->serialize();
-
-        $data should be a string
-    end
-
-end;
+    $data = $p->serialize();
+    $this->assertInternalType('string', $data);
+  }
+}

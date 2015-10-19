@@ -4,61 +4,54 @@ require_once __DIR__ . '/../library/DrSlump/Protobuf.php';
 
 use DrSlump\Protobuf;
 
-describe 'Protobuf'
+class ProtobufTest extends \PHPUnit_Framework_TestCase {
+  public function setUp() {
+    Protobuf::autoload();
+  }
 
-    //before
-        Protobuf::autoload();
-    //end
+  public function testAutloadsClasses() {
+    $c = new Protobuf\Codec\Binary();
+    $this->assertInstanceOf('DrSlump\Protobuf\Codec\Binary', $c, 'correctly autoloads classes');
+  }
 
-    it 'should autoload classes'
-        new Protobuf\Codec\Binary();
-    end.
+  public function testDefaultCodec() {
+    $c = Protobuf::getCodec();
+    $this->assertInstanceOf('DrSlump\Protobuf\CodecInterface', $c, 'returns default codec');
+  }
 
-    describe 'codecs registry'
-        it 'should get a default codec if none set'
-            $codec = Protobuf::getCodec();
-            $codec should be an instance of '\DrSlump\Protobuf\CodecInterface';
-        end.
+  public function testReturnsPassedCodecInstance() {
+    $passed = new Protobuf\Codec\Binary();
+    $getted = Protobuf::getCodec($passed);
+    $this->assertEquals($passed, $getted, 'returns the passed codec instance');
+  }
 
-        it 'should return the passed codec instance'
-            $passed = new Protobuf\Codec\Binary();
-            $getted = Protobuf::getCodec($passed);
-            $getted should be $passed
-        end.
+  public function testRegisterNewCodec() {
+    $setted = new Protobuf\Codec\Binary();
+    Protobuf::registerCodec('test', $setted);
+    $getted = Protobuf::getCodec('test');
+    $this->assertEquals($getted, $setted, 'registers a new codec');
+  }
 
-        it. 'should register a new codec'
-            $setted = new Protobuf\Codec\Binary();
-            Protobuf::registerCodec('test', $setted);
-            $getted = Protobuf::getCodec('test');
-            $getted should be $setted
-        end.
+  public function testRegisterDefaultCodec() {
+    $setted = new Protobuf\Codec\Binary();
+    Protobuf::setDefaultCodec($setted);
+    $this->assertEquals(Protobuf::getCodec(), $setted, 'registers a new default codec');
+  }
 
-        it 'should register a new default codec'
-            $setted = new Protobuf\Codec\Binary();
-            Protobuf::setDefaultCodec($setted);
-            Protobuf::getCodec() should be $setted
-        end.
+  public function testUnregisterCodec() {
+    $setted = new Protobuf\Codec\Binary();
+    Protobuf::registerCodec('test', $setted);
+    $result = Protobuf::unregisterCodec('test');
+    $this->assertTrue($result, 'unregisters a codec');
+    $this->setExpectedException('DrSlump\Protobuf\Exception');
+    Protobuf::getCodec('test');
+    //$this->fail('Failing this test on purpose');
+  }
 
-        # throws DrSlump\Protobuf\Exception
-        it. 'should unregister a codec'
-            $setted = new Protobuf\Codec\Binary();
-            Protobuf::registerCodec('test', $setted);
-            $result = Protobuf::unregisterCodec('test');
-            $result should be true;
-            // If not set throws an exception
-            Protobuf::getCodec('test');
-        end.
-
-        it. 'should unregister the default codec'
-            $result = Protobuf::unregisterCodec('default');
-            $result should be true;
-            // Ensure a new default is given
-            $getted = Protobuf::getCodec();
-            $getted should be instanceof 'DrSlump\Protobuf\Codec\Binary'
-        end.
-    end;
-end;
-
-
-
-
+  public function testUnregisterDefaultCodec() {
+    $result = Protobuf::unregisterCodec('default');
+    $this->assertTrue($result, 'unregisters default codec');
+    $getted = Protobuf::getCodec();
+    $this->assertInstanceOf('DrSlump\Protobuf\Codec\Binary', $getted, 'old default is given');
+  }
+}

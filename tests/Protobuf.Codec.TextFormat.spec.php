@@ -10,121 +10,112 @@ include_once __DIR__ . '/protos/simple.php';
 include_once __DIR__ . '/protos/repeated.php';
 include_once __DIR__ . '/protos/addressbook.php';
 
-describe "TextFormat Codec"
+class TextFormatCodecTest extends \PHPUnit_Framework_TestCase {
+  public function setUp() {
+    Protobuf::setDefaultCodec(new ProtoBuf\Codec\TextFormat);
+  }
 
-    before
-        Protobuf::setDefaultCodec(new ProtoBuf\Codec\TextFormat);
-    end
+  public function testSerializeSimpleMessage() {
+    $simple = new Tests\Simple();
+    $simple->string = 'FOO';
+    $simple->int32 = 1000;
+    $txt = Protobuf::encode($simple);
+    $this->assertEquals($txt, "int32: 1000\nstring: \"FOO\"\n");
+  }
 
-    describe "serialize"
+  public function testSerializeRepeatedFields() {
+    $repeated = new \Tests\Repeated();
+    $repeated->addString('one');
+    $repeated->addString('two');
+    $repeated->addString('three');
+    $txt = Protobuf::encode($repeated);
+    $this->assertEquals($txt, "string: \"one\"\nstring: \"two\"\nstring: \"three\"\n");
 
-         it "should serialize a simple message"
-             $simple = new Tests\Simple();
-             $simple->string = 'FOO';
-             $simple->int32 = 1000;
-             $txt = Protobuf::encode($simple);
-             $txt . should. be. "int32: 1000\nstring: \"FOO\"\n";
-         end.
+    $repeated = new Tests\Repeated();
+    $repeated->addInt(1);
+    $repeated->addInt(2);
+    $repeated->addInt(3);
+    $txt = Protobuf::encode($repeated);
+    $this->assertEquals($txt, "int: 1\nint: 2\nint: 3\n");
 
-         it. "a message with repeated fields"
+    $repeated = new Tests\Repeated();
+    $nested = new Tests\Repeated\Nested();
+    $nested->setId(1);
+    $repeated->addNested($nested);
+    $nested = new Tests\Repeated\Nested();
+    $nested->setId(2);
+    $repeated->addNested($nested);
+    $nested = new Tests\Repeated\Nested();
+    $nested->setId(3);
+    $repeated->addNested($nested);
+    $txt = Protobuf::encode($repeated);
+    $this->assertEquals($txt, "nested {\n  id: 1\n}\nnested {\n  id: 2\n}\nnested {\n  id: 3\n}\n");
+  }
 
-             $repeated = new \Tests\Repeated();
-             $repeated->addString('one');
-             $repeated->addString('two');
-             $repeated->addString('three');
-             $txt = Protobuf::encode($repeated);
-             $txt should be "string: \"one\"\nstring: \"two\"\nstring: \"three\"\n";
+  public function testSerializeComplexMessage() {
+    $book = new Tests\AddressBook();
+    $person = new Tests\Person();
+    $person->name = 'John Doe';
+    $person->id = 2051;
+    $person->email = 'john.doe@gmail.com';
+    $phone = new Tests\Person\PhoneNumber;
+    $phone->number = '1231231212';
+    $phone->type = Tests\Person\PhoneType::HOME;
+    $person->addPhone($phone);
+    $phone = new Tests\Person\PhoneNumber;
+    $phone->number = '55512321312';
+    $phone->type = Tests\Person\PhoneType::MOBILE;
+    $person->addPhone($phone);
+    $book->addPerson($person);
 
-             $repeated = new Tests\Repeated();
-             $repeated->addInt(1);
-             $repeated->addInt(2);
-             $repeated->addInt(3);
-             $txt = Protobuf::encode($repeated);
-             $txt should be "int: 1\nint: 2\nint: 3\n";
+    $person = new Tests\Person();
+    $person->name = 'Iván Montes';
+    $person->id = 23;
+    $person->email = 'drslump@pollinimini.net';
+    $phone = new Tests\Person\PhoneNumber;
+    $phone->number = '3493123123';
+    $phone->type = Tests\Person\PhoneType::WORK;
+    $person->addPhone($phone);
+    $book->addPerson($person);
 
-             $repeated = new Tests\Repeated();
-             $nested = new Tests\Repeated\Nested();
-             $nested->setId(1);
-             $repeated->addNested($nested);
-             $nested = new Tests\Repeated\Nested();
-             $nested->setId(2);
-             $repeated->addNested($nested);
-             $nested = new Tests\Repeated\Nested();
-             $nested->setId(3);
-             $repeated->addNested($nested);
-             $txt = Protobuf::encode($repeated);
-             $txt should eq "nested {\n  id: 1\n}\nnested {\n  id: 2\n}\nnested {\n  id: 3\n}\n";
-         end.
+    $txt = Protobuf::encode($book);
+    $txt = str_replace(' ', '', $txt);
+    $txt = trim($txt);
 
-         it. "a complex message"
+    $expected = '
+      person {
+        name: "John Doe"
+        id: 2051
+        email: "john.doe@gmail.com"
+        phone {
+          number: "1231231212"
+          type: 1
+        }
+        phone {
+          number: "55512321312"
+          type: 0
+        }
+      }
+      person {
+        name: "Iv\u00e1n Montes"
+        id: 23
+        email: "drslump@pollinimini.net"
+        phone {
+          number: "3493123123"
+          type: 2
+        }
+      }
+    ';
 
-            $book = new Tests\AddressBook();
-            $person = new Tests\Person();
-            $person->name = 'John Doe';
-            $person->id = 2051;
-            $person->email = 'john.doe@gmail.com';
-            $phone = new Tests\Person\PhoneNumber;
-            $phone->number = '1231231212';
-            $phone->type = Tests\Person\PhoneType::HOME;
-            $person->addPhone($phone);
-            $phone = new Tests\Person\PhoneNumber;
-            $phone->number = '55512321312';
-            $phone->type = Tests\Person\PhoneType::MOBILE;
-            $person->addPhone($phone);
-            $book->addPerson($person);
+    $expected = str_replace(' ', '', $expected);
+    $expected = trim($expected);
 
-            $person = new Tests\Person();
-            $person->name = 'Iván Montes';
-            $person->id = 23;
-            $person->email = 'drslump@pollinimini.net';
-            $phone = new Tests\Person\PhoneNumber;
-            $phone->number = '3493123123';
-            $phone->type = Tests\Person\PhoneType::WORK;
-            $person->addPhone($phone);
-            $book->addPerson($person);
+    $this->assertEquals($txt, $expected);
+  }
 
-            $txt = Protobuf::encode($book);
-            $txt = str_replace(' ', '', $txt);
-            $txt = trim($txt);
-
-            $expected = '
-                person {
-                    name: "John Doe"
-                    id: 2051
-                    email: "john.doe@gmail.com"
-                    phone {
-                        number: "1231231212"
-                        type: 1
-                    }
-                    phone {
-                        number: "55512321312"
-                        type: 0
-                    }
-                }
-                person {
-                    name: "Iv\u00e1n Montes"
-                    id: 23
-                    email: "drslump@pollinimini.net"
-                    phone {
-                        number: "3493123123"
-                        type: 2
-                    }
-                }
-            ';
-
-            $expected = str_replace(' ', '', $expected);
-            $expected = trim($expected);
-
-            $txt should be $expected;
-         end.
-    end;
-
-    describe "unserialize"
-
-         # throws \BadMethodCallException
-         it "TextFormat does not implement decoding"
-             $txt = "foo: \"FOO\"\nbar: \"BAR\"\n";
-             $simple = Protobuf::decode('Tests\Simple', $txt);
-         end.
-    end;
-end;
+  public function testUnserializeThrowsException() {
+    $this->setExpectedException('BadMethodCallException');
+    $txt = "foo: \"FOO\"\nbar: \"BAR\"\n";
+    $simple = Protobuf::decode('Tests\Simple', $txt);
+  }
+}
